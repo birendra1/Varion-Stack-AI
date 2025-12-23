@@ -19,24 +19,36 @@ export const webSearchToolDefinition = {
 };
 
 export async function performWebSearch(query) {
-  try {
-    console.log(`🔍 Performing web search for: ${query}`);
-    const results = await search(query, {
-      safeSearch: SafeSearchType.MODERATE 
-    });
+  const maxRetries = 3;
+  let delay = 2000;
 
-    if (!results.results || results.results.length === 0) {
-      return "No results found.";
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      console.log(`🔍 Performing web search for: ${query} (Attempt ${i + 1}/${maxRetries})`);
+      const results = await search(query, {
+        safeSearch: SafeSearchType.MODERATE 
+      });
+
+      if (!results.results || results.results.length === 0) {
+        return "No results found.";
+      }
+
+      // Format top 5 results
+      const topResults = results.results.slice(0, 5).map(r => 
+        `Title: ${r.title}\nURL: ${r.url}\nDescription: ${r.description || 'No description'}`
+      ).join('\n\n');
+
+      return `Search Results for "${query}":\n\n${topResults}`;
+    } catch (error) {
+      console.error(`Web search error (Attempt ${i + 1}):`, error.message);
+      
+      if (i === maxRetries - 1) {
+        return `Error performing web search: ${error.message}`;
+      }
+      
+      // Wait before retrying
+      await new Promise(resolve => setTimeout(resolve, delay));
+      delay *= 2; 
     }
-
-    // Format top 5 results
-    const topResults = results.results.slice(0, 5).map(r => 
-      `Title: ${r.title}\nURL: ${r.url}\nDescription: ${r.description || 'No description'}`
-    ).join('\n\n');
-
-    return `Search Results for "${query}":\n\n${topResults}`;
-  } catch (error) {
-    console.error("Web search error:", error);
-    return `Error performing web search: ${error.message}`;
   }
 }

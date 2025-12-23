@@ -9,6 +9,12 @@ export function HistorySidebar({ sessions, activeSessionId, onSessionClick, onNe
   const [editingSessionId, setEditingSessionId] = useState(null);
   const [editingTitle, setEditingTitle] = useState('');
 
+  const handleNewChat = () => {
+    if (onNewChat) {
+      onNewChat();
+    }
+  };
+
   const handleEditClick = (e, session) => {
     e.stopPropagation();
     setEditingSessionId(session.sessionId);
@@ -41,9 +47,9 @@ export function HistorySidebar({ sessions, activeSessionId, onSessionClick, onNe
         Chat History
       </Typography>
       
-      <Button 
+      <Button
         variant="contained"
-        onClick={() => onNewChat()}
+        onClick={handleNewChat}
         fullWidth
         size="small"
         sx={{ mb: 1.5 }}

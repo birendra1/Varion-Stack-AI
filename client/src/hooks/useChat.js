@@ -10,16 +10,16 @@ import {
   fetchModels, // Import this
 } from '../api/chatService';
 
-export function useChat(initialModel = '') { // Empty initial model, will load from DB
+export function useChat(initialModel = '', customSystemPrompt = null) {
   const [messages, setMessages] = useState([]);
   const [sessions, setSessions] = useState([]);
-  const [availableModels, setAvailableModels] = useState([]); // State for models
+  const [availableModels, setAvailableModels] = useState([]);
   const [currentModel, setCurrentModel] = useState(initialModel);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [sessionId, setSessionId] = useState(null);
 
-  // New state for presets
+  // Presets state
   const [categories, setCategories] = useState([]);
   const [presets, setPresets] = useState([]);
   const [activePreset, setActivePreset] = useState(null);
@@ -36,38 +36,38 @@ export function useChat(initialModel = '') { // Empty initial model, will load f
     try {
       const sessionList = await fetchSessions();
       setSessions(sessionList);
-      if (!sessionId && sessionList.length > 0) {
-        setSessionId(sessionList[0].sessionId);
-      } else if (!sessionId && sessionList.length === 0) {
-        startNewSession();
-      }
+      return sessionList;
     } catch (err) {
       console.error("Failed to load sessions:", err);
+      return [];
     }
-  }, [sessionId, startNewSession]);
+  }, []);
 
   useEffect(() => {
-    loadSessions();
-    // Load presets and categories on initial mount
-    const loadPresetData = async () => {
+    // Initial load
+    const init = async () => {
+      const sessionList = await loadSessions();
+      if (sessionList.length > 0 && !sessionId) {
+        setSessionId(sessionList[0].sessionId);
+      }
+      
+      // Load presets and categories
       setCategories(await fetchCategories());
       setPresets(await fetchPresets());
+
+      // Load Models
+      try {
+          const models = await fetchModels();
+          setAvailableModels(models);
+          if (models.length > 0 && !currentModel) {
+              setCurrentModel(models[0].value);
+          }
+      } catch (e) {
+          console.error("Failed to load models:", e);
+      }
     };
-    // Load Models
-    const loadModels = async () => {
-        try {
-            const models = await fetchModels();
-            setAvailableModels(models);
-            if (models.length > 0 && !currentModel) {
-                setCurrentModel(models[0].value);
-            }
-        } catch (e) {
-            console.error("Failed to load models:", e);
-        }
-    };
-    loadPresetData();
-    loadModels();
-  }, [loadSessions]); // Runs once on mount, and re-runs if loadSessions changes (which it shouldn't often)
+    init();
+  }, []); // Run only once on mount
 
   useEffect(() => {
     async function loadHistory() {
@@ -104,11 +104,16 @@ export function useChat(initialModel = '') { // Empty initial model, will load f
     };
     
     let messagesToSend = [...messages, userMessage];
-    
-    // If it's the first message and a preset is active, inject the system prompt
-    if (messages.length === 0 && activePreset) {
-      const systemMessage = { role: 'system', content: activePreset.prompt };
-      messagesToSend.unshift(systemMessage);
+
+    // If it's the first message, inject system prompt (preset takes priority over custom)
+    if (messages.length === 0) {
+      if (activePreset) {
+        const systemMessage = { role: 'system', content: activePreset.prompt };
+        messagesToSend.unshift(systemMessage);
+      } else if (customSystemPrompt) {
+        const systemMessage = { role: 'system', content: customSystemPrompt };
+        messagesToSend.unshift(systemMessage);
+      }
     }
 
     setMessages(prev => [...prev, userMessage]); // Optimistic UI update for user message
@@ -120,6 +125,9 @@ export function useChat(initialModel = '') { // Empty initial model, will load f
     
     try {
       await sendChatMessage(currentModel, messagesToSend, sessionId, files, (chunk) => {
+        if (chunk.sessionId && !sessionId) {
+          setSessionId(chunk.sessionId);
+        }
         if (chunk.message?.content) {
           setMessages(prev => {
             const newMessages = [...prev];
@@ -147,7 +155,7 @@ export function useChat(initialModel = '') { // Empty initial model, will load f
       setIsLoading(false);
       setMessages(prev => prev.slice(0, -1)); // Remove placeholder on error
     }
-  }, [messages, activePreset, currentModel, sessionId, sessions, loadSessions]);
+  }, [messages, activePreset, customSystemPrompt, currentModel, sessionId, sessions, loadSessions]);
 
   const updateTitle = useCallback(async (sessionIdToUpdate, newTitle) => {
     try {

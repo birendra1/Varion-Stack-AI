@@ -1,6 +1,12 @@
 const API_BASE = '/api';
 
-// This function now handles a streaming response
+// Helper to get auth headers
+function getAuthHeaders() {
+  const token = localStorage.getItem('authToken');
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+}
+
+// This function now handles a streaming response (Requires Auth)
 export async function sendChatMessage(model, messages, sessionId, files = [], onData) {
   try {
     const formData = new FormData();
@@ -9,16 +15,21 @@ export async function sendChatMessage(model, messages, sessionId, files = [], on
     if (sessionId) {
       formData.append('sessionId', sessionId);
     }
-    
+
     files.forEach(file => {
       formData.append('files', file);
     });
 
     const response = await fetch(`${API_BASE}/chat`, {
       method: 'POST',
-      // No Content-Type header; browser sets it with boundary for FormData
+      headers: getAuthHeaders(), // Add auth header
       body: formData,
     });
+
+    // Handle auth errors
+    if (response.status === 401 || response.status === 403) {
+      throw new Error('Authentication required. Please log in.');
+    }
 
     if (!response.body) {
       throw new Error("No response body");
@@ -81,10 +92,13 @@ export async function fetchChatHistory(sessionId) {
   }
 }
 
-// Add a function to load all sessions
+// Load all sessions (Requires Auth)
 export async function fetchSessions() {
   try {
-    const response = await fetch(`${API_BASE}/sessions`);
+    const response = await fetch(`${API_BASE}/sessions`, {
+      headers: authHeaders()
+    });
+    if (response.status === 401) return []; // Not logged in
     if (!response.ok) throw new Error("Failed to load sessions");
     return await response.json();
   } catch (error) {
@@ -93,29 +107,28 @@ export async function fetchSessions() {
   }
 }
 
-// Add a function to update a session title
+// Update a session title (Requires Auth)
 export async function updateSessionTitle(sessionId, title) {
   try {
     const response = await fetch(`${API_BASE}/sessions/${sessionId}`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: authHeaders(),
       body: JSON.stringify({ title }),
     });
     if (!response.ok) throw new Error("Failed to update session title");
     return await response.json();
   } catch (error) {
     console.error(error);
-    throw error; // Re-throw to be handled by the hook
+    throw error;
   }
 }
 
-// Add a function to delete a session
+// Delete a session (Requires Auth)
 export async function deleteSession(sessionId) {
   try {
     const response = await fetch(`${API_BASE}/sessions/${sessionId}`, {
       method: 'DELETE',
+      headers: authHeaders()
     });
     if (!response.ok) throw new Error("Failed to delete session");
   } catch (error) {
@@ -355,4 +368,98 @@ export async function deleteMCPServer(id) {
     headers: authHeaders()
   });
   if (!response.ok) throw new Error("Failed to delete server");
+}
+
+// --- REGISTRATION ---
+
+export async function registerInit(username, email, password) {
+  const response = await fetch(`${API_BASE}/auth/register/init`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, email, password })
+  });
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error || "Registration failed");
+  }
+  return response.json();
+}
+
+export async function registerVerify(username, email, password, otp) {
+  const response = await fetch(`${API_BASE}/auth/register/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, email, password, otp })
+  });
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error || "Verification failed");
+  }
+  const data = await response.json();
+  setAuthToken(data.token);
+  return data;
+}
+
+export async function resendOTP(email, type) {
+  const response = await fetch(`${API_BASE}/auth/resend-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, type })
+  });
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error || "Failed to resend code");
+  }
+  return response.json();
+}
+
+// --- PASSWORD ---
+
+export async function changePassword(currentPassword, newPassword) {
+  const response = await fetch(`${API_BASE}/auth/password`, {
+    method: 'PUT',
+    headers: authHeaders(),
+    body: JSON.stringify({ currentPassword, newPassword })
+  });
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error || "Failed to change password");
+  }
+  return response.json();
+}
+
+// --- USER PREFERENCES ---
+
+export async function fetchUserPreferences() {
+  const response = await fetch(`${API_BASE}/user/preferences`, {
+    headers: authHeaders()
+  });
+  if (!response.ok) {
+    if (response.status === 401) return {}; // Not logged in
+    throw new Error("Failed to load preferences");
+  }
+  return response.json();
+}
+
+export async function updateUserPreferences(preferences) {
+  const response = await fetch(`${API_BASE}/user/preferences`, {
+    method: 'PUT',
+    headers: authHeaders(),
+    body: JSON.stringify(preferences)
+  });
+  if (!response.ok) throw new Error("Failed to update preferences");
+  return response.json();
+}
+
+// --- CURRENT USER ---
+
+export async function fetchCurrentUser() {
+  const response = await fetch(`${API_BASE}/user/me`, {
+    headers: authHeaders()
+  });
+  if (!response.ok) {
+    if (response.status === 401) return null;
+    throw new Error("Failed to fetch user");
+  }
+  return response.json();
 }
