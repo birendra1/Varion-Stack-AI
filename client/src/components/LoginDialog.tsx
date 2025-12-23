@@ -1,20 +1,27 @@
-import { useState } from 'react';
+import { useState, FormEvent } from 'react';
 import { Dialog, DialogTitle, DialogContent, TextField, Button, Box, Typography, Alert } from '@mui/material';
 import { login } from '../api/chatService';
+import { IUser } from '../types';
 
-export function LoginDialog({ open, onClose, onLoginSuccess }) {
+interface LoginDialogProps {
+  open: boolean;
+  onClose: () => void;
+  onLoginSuccess: (data: { token: string; user: IUser }) => void;
+}
+
+export function LoginDialog({ open, onClose, onLoginSuccess }: LoginDialogProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
     try {
       const data = await login(username, password);
       onLoginSuccess(data);
       onClose();
-    } catch (err) {
+    } catch (err: any) {
         // Handle specific block error
         if (err.message.includes('blocked')) {
             setError(err.message);

@@ -1,13 +1,38 @@
+import { 
+  IMessage, 
+  IChatSession, 
+  ICategory, 
+  IPreset, 
+  IModelConfig, 
+  IUser, 
+  IUserPreferences,
+  ISessionListItem
+} from '../types';
+
 const API_BASE = '/api';
 
 // Helper to get auth headers
-function getAuthHeaders() {
+function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem('authToken');
   return token ? { 'Authorization': `Bearer ${token}` } : {};
 }
 
+// Helper for JSON auth headers
+function authHeaders(): Record<string, string> {
+  const token = getAuthToken();
+  return token 
+    ? { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } 
+    : { 'Content-Type': 'application/json' };
+}
+
 // This function now handles a streaming response (Requires Auth)
-export async function sendChatMessage(model, messages, sessionId, files = [], onData) {
+export async function sendChatMessage(
+  model: string, 
+  messages: IMessage[], 
+  sessionId: string | null, 
+  files: File[] = [], 
+  onData: (data: any) => void
+): Promise<void> {
   try {
     const formData = new FormData();
     formData.append('model', model);
@@ -22,7 +47,7 @@ export async function sendChatMessage(model, messages, sessionId, files = [], on
 
     const response = await fetch(`${API_BASE}/chat`, {
       method: 'POST',
-      headers: getAuthHeaders(), // Add auth header
+      headers: getAuthHeaders(),
       body: formData,
     });
 
@@ -50,7 +75,7 @@ export async function sendChatMessage(model, messages, sessionId, files = [], on
       
       const lines = buffer.split('\n\n');
       // The last element is either empty (if ended with \n\n) or the incomplete chunk
-      buffer = lines.pop(); 
+      buffer = lines.pop() || ''; 
       
       for (const line of lines) {
         if (line.startsWith('data: ')) {
@@ -81,7 +106,7 @@ export async function sendChatMessage(model, messages, sessionId, files = [], on
 }
 
 // Add a function to load history on startup
-export async function fetchChatHistory(sessionId) {
+export async function fetchChatHistory(sessionId: string): Promise<IMessage[]> {
   try {
     const response = await fetch(`${API_BASE}/history/${sessionId}`);
     if (!response.ok) throw new Error("Failed to load history");
@@ -93,7 +118,7 @@ export async function fetchChatHistory(sessionId) {
 }
 
 // Load all sessions (Requires Auth)
-export async function fetchSessions() {
+export async function fetchSessions(): Promise<ISessionListItem[]> {
   try {
     const response = await fetch(`${API_BASE}/sessions`, {
       headers: authHeaders()
@@ -108,7 +133,7 @@ export async function fetchSessions() {
 }
 
 // Update a session title (Requires Auth)
-export async function updateSessionTitle(sessionId, title) {
+export async function updateSessionTitle(sessionId: string, title: string): Promise<IChatSession> {
   try {
     const response = await fetch(`${API_BASE}/sessions/${sessionId}`, {
       method: 'PUT',
@@ -124,7 +149,7 @@ export async function updateSessionTitle(sessionId, title) {
 }
 
 // Delete a session (Requires Auth)
-export async function deleteSession(sessionId) {
+export async function deleteSession(sessionId: string): Promise<void> {
   try {
     const response = await fetch(`${API_BASE}/sessions/${sessionId}`, {
       method: 'DELETE',
@@ -137,7 +162,7 @@ export async function deleteSession(sessionId) {
   }
 }
 
-export async function fetchCategories() {
+export async function fetchCategories(): Promise<ICategory[]> {
   try {
     const response = await fetch(`${API_BASE}/categories`);
     if (!response.ok) throw new Error("Failed to load categories");
@@ -148,7 +173,7 @@ export async function fetchCategories() {
   }
 }
 
-export async function fetchPresets(categoryId = null) {
+export async function fetchPresets(categoryId: string | null = null): Promise<IPreset[]> {
   try {
     const url = categoryId ? `${API_BASE}/presets?categoryId=${categoryId}` : `${API_BASE}/presets`;
     const response = await fetch(url);
@@ -160,15 +185,13 @@ export async function fetchPresets(categoryId = null) {
   }
 }
 
-// REMOVED AVAILABLE_MODELS export - use fetchModels() instead
-
 // --- AUTH ---
 
-export function getAuthToken() {
+export function getAuthToken(): string | null {
   return localStorage.getItem('authToken');
 }
 
-export function setAuthToken(token) {
+export function setAuthToken(token: string | null): void {
   if (token) {
     localStorage.setItem('authToken', token);
   } else {
@@ -176,7 +199,7 @@ export function setAuthToken(token) {
   }
 }
 
-export async function login(username, password) {
+export async function login(username: string, password: string): Promise<{ token: string; user: IUser }> {
   try {
     const response = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
@@ -198,12 +221,7 @@ export async function login(username, password) {
 
 // --- ADMIN PRESETS ---
 
-function authHeaders() {
-  const token = getAuthToken();
-  return token ? { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
-}
-
-export async function createPreset(presetData) {
+export async function createPreset(presetData: Partial<IPreset>): Promise<IPreset> {
   const response = await fetch(`${API_BASE}/presets`, {
     method: 'POST',
     headers: authHeaders(),
@@ -213,7 +231,7 @@ export async function createPreset(presetData) {
   return response.json();
 }
 
-export async function updatePreset(id, presetData) {
+export async function updatePreset(id: string, presetData: Partial<IPreset>): Promise<IPreset> {
   const response = await fetch(`${API_BASE}/presets/${id}`, {
     method: 'PUT',
     headers: authHeaders(),
@@ -223,7 +241,7 @@ export async function updatePreset(id, presetData) {
   return response.json();
 }
 
-export async function deletePreset(id) {
+export async function deletePreset(id: string): Promise<void> {
   const response = await fetch(`${API_BASE}/presets/${id}`, {
     method: 'DELETE',
     headers: authHeaders()
@@ -231,7 +249,7 @@ export async function deletePreset(id) {
   if (!response.ok) throw new Error("Failed to delete preset");
 }
 
-export async function createCategory(categoryData) {
+export async function createCategory(categoryData: Partial<ICategory>): Promise<ICategory> {
   const response = await fetch(`${API_BASE}/categories`, {
     method: 'POST',
     headers: authHeaders(),
@@ -241,7 +259,7 @@ export async function createCategory(categoryData) {
   return response.json();
 }
 
-export async function deleteCategory(id) {
+export async function deleteCategory(id: string): Promise<void> {
   const response = await fetch(`${API_BASE}/categories/${id}`, {
     method: 'DELETE',
     headers: authHeaders()
@@ -251,19 +269,19 @@ export async function deleteCategory(id) {
 
 // --- ADMIN DASHBOARD ---
 
-export async function fetchAdminStats() {
+export async function fetchAdminStats(): Promise<any> {
   const response = await fetch(`${API_BASE}/admin/stats`, { headers: authHeaders() });
   if (!response.ok) throw new Error("Failed to load stats");
   return response.json();
 }
 
-export async function fetchUsers() {
+export async function fetchUsers(): Promise<IUser[]> {
   const response = await fetch(`${API_BASE}/admin/users`, { headers: authHeaders() });
   if (!response.ok) throw new Error("Failed to load users");
   return response.json();
 }
 
-export async function toggleUserBlock(userId, isBlocked) {
+export async function toggleUserBlock(userId: string, isBlocked: boolean): Promise<IUser> {
   const response = await fetch(`${API_BASE}/admin/users/${userId}/block`, {
     method: 'PUT',
     headers: authHeaders(),
@@ -273,7 +291,7 @@ export async function toggleUserBlock(userId, isBlocked) {
   return response.json();
 }
 
-export async function sendUserEmail(userId, message) {
+export async function sendUserEmail(userId: string, message: string): Promise<any> {
   const response = await fetch(`${API_BASE}/admin/users/${userId}/email`, {
     method: 'POST',
     headers: authHeaders(),
@@ -283,7 +301,7 @@ export async function sendUserEmail(userId, message) {
   return response.json();
 }
 
-export async function generateSupportToken(userId) {
+export async function generateSupportToken(userId: string): Promise<{ token: string }> {
   const response = await fetch(`${API_BASE}/admin/users/${userId}/token`, {
     method: 'POST',
     headers: authHeaders()
@@ -294,19 +312,19 @@ export async function generateSupportToken(userId) {
 
 // --- MODEL CONFIG ---
 
-export async function fetchModels() {
+export async function fetchModels(): Promise<IModelConfig[]> {
   const response = await fetch(`${API_BASE}/models`); // Public
   if (!response.ok) throw new Error("Failed to load models");
   return response.json();
 }
 
-export async function fetchAdminModels() {
+export async function fetchAdminModels(): Promise<IModelConfig[]> {
   const response = await fetch(`${API_BASE}/admin/models`, { headers: authHeaders() });
   if (!response.ok) throw new Error("Failed to load models");
   return response.json();
 }
 
-export async function createModel(data) {
+export async function createModel(data: Partial<IModelConfig>): Promise<IModelConfig> {
   const response = await fetch(`${API_BASE}/admin/models`, {
     method: 'POST',
     headers: authHeaders(),
@@ -316,7 +334,7 @@ export async function createModel(data) {
   return response.json();
 }
 
-export async function updateModel(id, data) {
+export async function updateModel(id: string, data: Partial<IModelConfig>): Promise<IModelConfig> {
   const response = await fetch(`${API_BASE}/admin/models/${id}`, {
     method: 'PUT',
     headers: authHeaders(),
@@ -326,7 +344,7 @@ export async function updateModel(id, data) {
   return response.json();
 }
 
-export async function deleteModel(id) {
+export async function deleteModel(id: string): Promise<void> {
   const response = await fetch(`${API_BASE}/admin/models/${id}`, {
     method: 'DELETE',
     headers: authHeaders()
@@ -336,13 +354,13 @@ export async function deleteModel(id) {
 
 // --- MCP SERVERS ---
 
-export async function fetchMCPServers() {
+export async function fetchMCPServers(): Promise<any[]> {
   const response = await fetch(`${API_BASE}/admin/mcp`, { headers: authHeaders() });
   if (!response.ok) throw new Error("Failed to load MCP servers");
   return response.json();
 }
 
-export async function createMCPServer(data) {
+export async function createMCPServer(data: any): Promise<any> {
   const response = await fetch(`${API_BASE}/admin/mcp`, {
     method: 'POST',
     headers: authHeaders(),
@@ -352,7 +370,7 @@ export async function createMCPServer(data) {
   return response.json();
 }
 
-export async function updateMCPServer(id, data) {
+export async function updateMCPServer(id: string, data: any): Promise<any> {
   const response = await fetch(`${API_BASE}/admin/mcp/${id}`, {
     method: 'PUT',
     headers: authHeaders(),
@@ -362,7 +380,7 @@ export async function updateMCPServer(id, data) {
   return response.json();
 }
 
-export async function deleteMCPServer(id) {
+export async function deleteMCPServer(id: string): Promise<void> {
   const response = await fetch(`${API_BASE}/admin/mcp/${id}`, {
     method: 'DELETE',
     headers: authHeaders()
@@ -372,7 +390,7 @@ export async function deleteMCPServer(id) {
 
 // --- REGISTRATION ---
 
-export async function registerInit(username, email, password) {
+export async function registerInit(username: string, email: string, password: string): Promise<any> {
   const response = await fetch(`${API_BASE}/auth/register/init`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -385,7 +403,7 @@ export async function registerInit(username, email, password) {
   return response.json();
 }
 
-export async function registerVerify(username, email, password, otp) {
+export async function registerVerify(username: string, email: string, password: string, otp: string): Promise<{ token: string; user: IUser }> {
   const response = await fetch(`${API_BASE}/auth/register/verify`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -400,7 +418,7 @@ export async function registerVerify(username, email, password, otp) {
   return data;
 }
 
-export async function resendOTP(email, type) {
+export async function resendOTP(email: string, type: string): Promise<any> {
   const response = await fetch(`${API_BASE}/auth/resend-otp`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -415,7 +433,7 @@ export async function resendOTP(email, type) {
 
 // --- PASSWORD ---
 
-export async function changePassword(currentPassword, newPassword) {
+export async function changePassword(currentPassword: string, newPassword: string): Promise<any> {
   const response = await fetch(`${API_BASE}/auth/password`, {
     method: 'PUT',
     headers: authHeaders(),
@@ -430,7 +448,7 @@ export async function changePassword(currentPassword, newPassword) {
 
 // --- USER PREFERENCES ---
 
-export async function fetchUserPreferences() {
+export async function fetchUserPreferences(): Promise<Partial<IUserPreferences>> {
   const response = await fetch(`${API_BASE}/user/preferences`, {
     headers: authHeaders()
   });
@@ -441,7 +459,7 @@ export async function fetchUserPreferences() {
   return response.json();
 }
 
-export async function updateUserPreferences(preferences) {
+export async function updateUserPreferences(preferences: Partial<IUserPreferences>): Promise<IUserPreferences> {
   const response = await fetch(`${API_BASE}/user/preferences`, {
     method: 'PUT',
     headers: authHeaders(),
@@ -453,7 +471,7 @@ export async function updateUserPreferences(preferences) {
 
 // --- CURRENT USER ---
 
-export async function fetchCurrentUser() {
+export async function fetchCurrentUser(): Promise<IUser | null> {
   const response = await fetch(`${API_BASE}/user/me`, {
     headers: authHeaders()
   });

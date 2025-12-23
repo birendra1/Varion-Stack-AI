@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import {
   Drawer, Box, Typography, FormControl, InputLabel, Select, MenuItem,
-  TextField, Button, Divider, Alert, IconButton
+  TextField, Button, Divider, Alert, IconButton, SelectChangeEvent
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { changePassword } from '../api/chatService';
+import { IModelConfig } from '../types';
 
 const ACCENT_COLORS = [
   { name: 'Blue', value: '#1976d2' },
@@ -19,7 +20,13 @@ const ACCENT_COLORS = [
   { name: 'Indigo', value: '#303f9f' },
 ];
 
-export function SettingsDrawer({ open, onClose, models = [] }) {
+interface SettingsDrawerProps {
+  open: boolean;
+  onClose: () => void;
+  models: IModelConfig[];
+}
+
+export function SettingsDrawer({ open, onClose, models = [] }: SettingsDrawerProps) {
   const { preferences, updatePreferences } = useTheme();
   const { isAuthenticated, user } = useAuth();
 
@@ -28,7 +35,7 @@ export function SettingsDrawer({ open, onClose, models = [] }) {
     new: '',
     confirm: ''
   });
-  const [passwordError, setPasswordError] = useState(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
@@ -54,11 +61,23 @@ export function SettingsDrawer({ open, onClose, models = [] }) {
       await changePassword(passwordForm.current, passwordForm.new);
       setPasswordSuccess(true);
       setPasswordForm({ current: '', new: '', confirm: '' });
-    } catch (err) {
+    } catch (err: any) {
       setPasswordError(err.message || 'Failed to change password');
     } finally {
       setIsChangingPassword(false);
     }
+  };
+
+  const handleThemeChange = (event: SelectChangeEvent<"system" | "light" | "dark">) => {
+    updatePreferences({ theme: event.target.value as "system" | "light" | "dark" });
+  };
+
+  const handleAccentChange = (event: SelectChangeEvent<string>) => {
+    updatePreferences({ accentColor: event.target.value });
+  };
+
+  const handleModelChange = (event: SelectChangeEvent<string>) => {
+    updatePreferences({ defaultModel: event.target.value || null });
   };
 
   return (
@@ -97,7 +116,7 @@ export function SettingsDrawer({ open, onClose, models = [] }) {
           <Select
             value={preferences.theme || 'system'}
             label="Theme"
-            onChange={(e) => updatePreferences({ theme: e.target.value })}
+            onChange={handleThemeChange as any}
           >
             <MenuItem value="system">System</MenuItem>
             <MenuItem value="light">Light</MenuItem>
@@ -110,7 +129,7 @@ export function SettingsDrawer({ open, onClose, models = [] }) {
           <Select
             value={preferences.accentColor || '#1976d2'}
             label="Accent Color"
-            onChange={(e) => updatePreferences({ accentColor: e.target.value })}
+            onChange={handleAccentChange}
           >
             {ACCENT_COLORS.map(color => (
               <MenuItem key={color.value} value={color.value}>
@@ -138,9 +157,9 @@ export function SettingsDrawer({ open, onClose, models = [] }) {
         <FormControl fullWidth margin="normal" size="small">
           <InputLabel>Default Model</InputLabel>
           <Select
-            value={preferences.defaultModel || ''}
+            value={preferences.defaultModel ?? ''}
             label="Default Model"
-            onChange={(e) => updatePreferences({ defaultModel: e.target.value || null })}
+            onChange={handleModelChange}
           >
             <MenuItem value="">Use last selected</MenuItem>
             {models.map(m => (
@@ -155,7 +174,7 @@ export function SettingsDrawer({ open, onClose, models = [] }) {
           rows={4}
           label="Custom System Prompt"
           placeholder="Enter a default system prompt for new chats..."
-          value={preferences.customSystemPrompt || ''}
+          value={preferences.customSystemPrompt ?? ''}
           onChange={(e) => updatePreferences({ customSystemPrompt: e.target.value || null })}
           margin="normal"
           size="small"

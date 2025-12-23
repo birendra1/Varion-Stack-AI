@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, FormEvent, ChangeEvent } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import {
   Container, Paper, TextField, Button, Typography, Box, Alert,
@@ -25,16 +25,16 @@ export function RegisterPage() {
   });
   const [otp, setOtp] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [resendCountdown, setResendCountdown] = useState(0);
 
-  const handleChange = (field) => (e) => {
+  const handleChange = (field: string) => (e: ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({ ...prev, [field]: e.target.value }));
     setError(null);
   };
 
-  const handleStep1Submit = async (e) => {
+  const handleStep1Submit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -53,14 +53,14 @@ export function RegisterPage() {
       await registerInit(formData.username, formData.email, formData.password);
       setActiveStep(1);
       startResendCountdown();
-    } catch (err) {
+    } catch (err: any) {
       setError(err.message || 'Failed to send verification code');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleVerifySubmit = async (e) => {
+  const handleVerifySubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
@@ -74,7 +74,7 @@ export function RegisterPage() {
       );
       login(data);
       navigate('/');
-    } catch (err) {
+    } catch (err: any) {
       setError(err.message || 'Verification failed');
     } finally {
       setIsLoading(false);
@@ -100,7 +100,7 @@ export function RegisterPage() {
     try {
       await resendOTP(formData.email, 'registration');
       startResendCountdown();
-    } catch (err) {
+    } catch (err: any) {
       setError(err.message || 'Failed to resend code');
     } finally {
       setIsLoading(false);

@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, FormEvent, SyntheticEvent } from 'react';
 import { 
   Box, Container, Typography, TextField, Button, Paper, Tabs, Tab, 
   List, ListItem, ListItemText, ListItemSecondaryAction, IconButton, 
   Dialog, DialogTitle, DialogContent, DialogActions, Select, MenuItem, InputLabel, FormControl,
-  Grid, Card, CardContent, Switch, Chip, Table, TableBody, TableCell, TableHead, TableRow
+  Grid, Card, CardContent, Table, TableBody, TableCell, TableHead, TableRow, Chip,
+  SelectChangeEvent
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
@@ -20,23 +21,24 @@ import {
   fetchAdminModels, createModel, updateModel, deleteModel,
   fetchMCPServers, createMCPServer, updateMCPServer, deleteMCPServer
 } from '../api/chatService';
+import { IUser, ICategory, IPreset, IModelConfig } from '../types';
 
 export function AdminPanel() {
   const [token, setToken] = useState(getAuthToken());
   const [activeTab, setActiveTab] = useState(0);
   
   // Data State
-  const [categories, setCategories] = useState([]);
-  const [presets, setPresets] = useState([]);
-  const [stats, setStats] = useState(null);
-  const [users, setUsers] = useState([]);
-  const [models, setModels] = useState([]);
-  const [mcpServers, setMcpServers] = useState([]);
+  const [categories, setCategories] = useState<ICategory[]>([]);
+  const [presets, setPresets] = useState<IPreset[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [users, setUsers] = useState<IUser[]>([]);
+  const [models, setModels] = useState<IModelConfig[]>([]);
+  const [mcpServers, setMcpServers] = useState<any[]>([]);
 
   // Login State
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [loginError, setLoginError] = useState(null);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   useEffect(() => {
     if (token) {
@@ -52,7 +54,7 @@ export function AdminPanel() {
       setUsers(await fetchUsers());
       setModels(await fetchAdminModels());
       setMcpServers(await fetchMCPServers());
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
       if (e.message.includes('401') || e.message.includes('403')) {
         handleLogout();
@@ -60,16 +62,16 @@ export function AdminPanel() {
     }
   };
 
-  const handleLogin = async (e) => {
+  const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
     try {
       const data = await login(username, password);
-      if (data.role !== 'admin') {
+      if (data.user.role !== 'admin') {
           throw new Error("Access denied. Admin role required.");
       }
       setToken(data.token);
       setLoginError(null);
-    } catch (err) {
+    } catch (err: any) {
       setLoginError(err.message);
     }
   };
@@ -110,7 +112,7 @@ export function AdminPanel() {
 
       {stats && (
           <Grid container spacing={3} sx={{ mb: 3 }}>
-              <Grid item xs={12} md={4}>
+              <Grid size={{ xs: 12, md: 4 }}>
                   <Card sx={{ bgcolor: '#e3f2fd' }}>
                       <CardContent>
                           <Typography color="textSecondary" gutterBottom>Total Users</Typography>
@@ -118,7 +120,7 @@ export function AdminPanel() {
                       </CardContent>
                   </Card>
               </Grid>
-              <Grid item xs={12} md={4}>
+              <Grid size={{ xs: 12, md: 4 }}>
                   <Card sx={{ bgcolor: '#f3e5f5' }}>
                       <CardContent>
                           <Typography color="textSecondary" gutterBottom>Total Chats</Typography>
@@ -126,7 +128,7 @@ export function AdminPanel() {
                       </CardContent>
                   </Card>
               </Grid>
-              <Grid item xs={12} md={4}>
+              <Grid size={{ xs: 12, md: 4 }}>
                   <Card sx={{ bgcolor: '#e8f5e9' }}>
                       <CardContent>
                           <Typography color="textSecondary" gutterBottom>Active Presets</Typography>
@@ -138,7 +140,7 @@ export function AdminPanel() {
       )}
 
       <Paper sx={{ width: '100%', mb: 2 }}>
-        <Tabs value={activeTab} onChange={(e, v) => setActiveTab(v)} variant="scrollable" scrollButtons="auto">
+        <Tabs value={activeTab} onChange={(_e: SyntheticEvent, v: number) => setActiveTab(v)} variant="scrollable" scrollButtons="auto">
           <Tab label="Users & Access" />
           <Tab label="Categories" />
           <Tab label="Presets" />
@@ -166,16 +168,19 @@ export function AdminPanel() {
   );
 }
 
-// ... (UserManager, CategoryManager, PresetManager remain same)
+interface ModelManagerProps {
+  models: IModelConfig[];
+  onRefresh: () => Promise<void>;
+}
 
-function ModelManager({ models, onRefresh }) {
+function ModelManager({ models, onRefresh }: ModelManagerProps) {
     const [open, setOpen] = useState(false);
-    const [editingId, setEditingId] = useState(null);
-    const [formData, setFormData] = useState({
-        name: '', value: '', provider: 'ollama', baseUrl: 'http://localhost:11434', apiKey: '', contextWindow: 4096
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [formData, setFormData] = useState<Partial<IModelConfig>>({
+        name: '', value: '', provider: 'ollama', baseUrl: 'http://localhost:11434', apiKey: '', contextWindow: 4096, isActive: true
     });
 
-    const handleEdit = (model) => {
+    const handleEdit = (model: IModelConfig) => {
         setEditingId(model._id);
         setFormData({ ...model, apiKey: '' }); // Don't show encrypted key
         setOpen(true);
@@ -183,7 +188,7 @@ function ModelManager({ models, onRefresh }) {
 
     const handleOpenNew = () => {
         setEditingId(null);
-        setFormData({ name: '', value: '', provider: 'ollama', baseUrl: 'http://localhost:11434', apiKey: '', contextWindow: 4096 });
+        setFormData({ name: '', value: '', provider: 'ollama', baseUrl: 'http://localhost:11434', apiKey: '', contextWindow: 4096, isActive: true });
         setOpen(true);
     };
 
@@ -196,14 +201,18 @@ function ModelManager({ models, onRefresh }) {
             }
             setOpen(false);
             onRefresh();
-        } catch (e) { alert(e.message); }
+        } catch (e: any) { alert(e.message); }
     };
 
-    const handleDelete = async (id) => {
+    const handleDelete = async (id: string) => {
         if (window.confirm("Delete this model?")) {
             await deleteModel(id);
             onRefresh();
         }
+    };
+
+    const handleProviderChange = (event: SelectChangeEvent<"ollama" | "openai" | "anthropic" | "custom">) => {
+      setFormData({...formData, provider: event.target.value as any});
     };
 
     return (
@@ -232,7 +241,7 @@ function ModelManager({ models, onRefresh }) {
                     <TextField label="Model ID (Value)" fullWidth margin="dense" value={formData.value} onChange={e => setFormData({...formData, value: e.target.value})} />
                     <FormControl fullWidth margin="dense">
                         <InputLabel>Provider</InputLabel>
-                        <Select value={formData.provider} label="Provider" onChange={e => setFormData({...formData, provider: e.target.value})}>
+                        <Select value={formData.provider} label="Provider" onChange={handleProviderChange}>
                             <MenuItem value="ollama">Ollama</MenuItem>
                             <MenuItem value="openai">OpenAI</MenuItem>
                             <MenuItem value="anthropic">Anthropic</MenuItem>
@@ -252,14 +261,19 @@ function ModelManager({ models, onRefresh }) {
     );
 }
 
-function MCPServerManager({ servers, onRefresh }) {
+interface MCPServerManagerProps {
+  servers: any[];
+  onRefresh: () => Promise<void>;
+}
+
+function MCPServerManager({ servers, onRefresh }: MCPServerManagerProps) {
     const [open, setOpen] = useState(false);
-    const [editingId, setEditingId] = useState(null);
-    const [formData, setFormData] = useState({
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [formData, setFormData] = useState<any>({
         name: '', type: 'stdio', command: '', url: '', env: ''
     });
 
-    const handleEdit = (server) => {
+    const handleEdit = (server: any) => {
         setEditingId(server._id);
         setFormData({ 
             ...server, 
@@ -292,10 +306,10 @@ function MCPServerManager({ servers, onRefresh }) {
             }
             setOpen(false);
             onRefresh();
-        } catch (e) { alert(e.message); }
+        } catch (e: any) { alert(e.message); }
     };
 
-    const handleDelete = async (id) => {
+    const handleDelete = async (id: string) => {
         if (window.confirm("Delete this server?")) {
             await deleteMCPServer(id);
             onRefresh();
@@ -327,7 +341,7 @@ function MCPServerManager({ servers, onRefresh }) {
                     <TextField label="Name" fullWidth margin="dense" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                     <FormControl fullWidth margin="dense">
                         <InputLabel>Type</InputLabel>
-                        <Select value={formData.type} label="Type" onChange={e => setFormData({...formData, type: e.target.value})}>
+                        <Select value={formData.type} label="Type" onChange={e => setFormData({...formData, type: e.target.value as any})}>
                             <MenuItem value="stdio">Stdio</MenuItem>
                             <MenuItem value="sse">SSE</MenuItem>
                         </Select>
@@ -348,24 +362,29 @@ function MCPServerManager({ servers, onRefresh }) {
     );
 }
 
-function UserManager({ users, onRefresh }) {
-    const handleBlock = async (user) => {
+interface UserManagerProps {
+  users: IUser[];
+  onRefresh: () => Promise<void>;
+}
+
+function UserManager({ users, onRefresh }: UserManagerProps) {
+    const handleBlock = async (user: IUser) => {
         if (window.confirm(`Are you sure you want to ${user.isBlocked ? 'unblock' : 'block'} ${user.username}?`)) {
-            await toggleUserBlock(user._id, !user.isBlocked);
+            await toggleUserBlock(user._id!, !user.isBlocked);
             onRefresh();
         }
     };
 
-    const handleEmail = async (user) => {
+    const handleEmail = async (user: IUser) => {
         const msg = prompt("Enter email message:");
         if (msg) {
-            await sendUserEmail(user._id, msg);
+            await sendUserEmail(user._id!, msg);
             alert("Email sent (mock)!");
         }
     };
 
-    const handleToken = async (user) => {
-        const res = await generateSupportToken(user._id);
+    const handleToken = async (user: IUser) => {
+        const res = await generateSupportToken(user._id!);
         alert(`Support Token Generated: ${res.token}`);
     };
 
@@ -411,7 +430,12 @@ function UserManager({ users, onRefresh }) {
     );
 }
 
-function CategoryManager({ categories, onRefresh }) {
+interface CategoryManagerProps {
+  categories: ICategory[];
+  onRefresh: () => Promise<void>;
+}
+
+function CategoryManager({ categories, onRefresh }: CategoryManagerProps) {
   const [open, setOpen] = useState(false);
   const [newCatName, setNewCatName] = useState('');
   const [newCatDesc, setNewCatDesc] = useState('');
@@ -423,17 +447,17 @@ function CategoryManager({ categories, onRefresh }) {
       setNewCatName('');
       setNewCatDesc('');
       onRefresh();
-    } catch (e) {
+    } catch (e: any) {
       alert(e.message);
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: string) => {
     if (!window.confirm("Delete this category?")) return;
     try {
       await deleteCategory(id);
       onRefresh();
-    } catch (e) {
+    } catch (e: any) {
       alert(e.message);
     }
   };
@@ -477,21 +501,27 @@ function CategoryManager({ categories, onRefresh }) {
   );
 }
 
-function PresetManager({ presets, categories, onRefresh }) {
+interface PresetManagerProps {
+  presets: IPreset[];
+  categories: ICategory[];
+  onRefresh: () => Promise<void>;
+}
+
+function PresetManager({ presets, categories, onRefresh }: PresetManagerProps) {
   const [open, setOpen] = useState(false);
-  const [editingId, setEditingId] = useState(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<Partial<IPreset>>({
     name: '', description: '', prompt: '', category: '', subCategory: ''
   });
 
-  const handleEdit = (preset) => {
+  const handleEdit = (preset: IPreset) => {
     setEditingId(preset._id);
     setFormData({
       name: preset.name,
       description: preset.description,
       prompt: preset.prompt,
-      category: preset.category?._id || preset.category,
+      category: typeof preset.category === 'object' ? preset.category._id : preset.category,
       subCategory: preset.subCategory || ''
     });
     setOpen(true);
@@ -512,19 +542,23 @@ function PresetManager({ presets, categories, onRefresh }) {
       }
       setOpen(false);
       onRefresh();
-    } catch (e) {
+    } catch (e: any) {
       alert(e.message);
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: string) => {
     if (!window.confirm("Delete this preset?")) return;
     try {
       await deletePreset(id);
       onRefresh();
-    } catch (e) {
+    } catch (e: any) {
       alert(e.message);
     }
+  };
+
+  const handleCategoryChange = (event: SelectChangeEvent<string>) => {
+    setFormData({...formData, category: event.target.value});
   };
 
   return (
@@ -532,22 +566,25 @@ function PresetManager({ presets, categories, onRefresh }) {
       <Button variant="contained" onClick={handleOpenNew} sx={{ mb: 2 }}>Add Preset</Button>
       <Paper>
         <List>
-          {presets.map(preset => (
-            <ListItem key={preset._id} divider>
-              <ListItemText 
-                primary={preset.name} 
-                secondary={`${preset.category?.name || 'Uncategorized'} - ${preset.subCategory || ''}`} 
-              />
-              <ListItemSecondaryAction>
-                <IconButton onClick={() => handleEdit(preset)} aria-label="edit">
-                  <EditIcon />
-                </IconButton>
-                <IconButton onClick={() => handleDelete(preset._id)} edge="end" aria-label="delete">
-                  <DeleteIcon />
-                </IconButton>
-              </ListItemSecondaryAction>
-            </ListItem>
-          ))}
+          {presets.map(preset => {
+            const categoryName = typeof preset.category === 'object' ? preset.category.name : 'Uncategorized';
+            return (
+              <ListItem key={preset._id} divider>
+                <ListItemText 
+                  primary={preset.name} 
+                  secondary={`${categoryName} - ${preset.subCategory || ''}`} 
+                />
+                <ListItemSecondaryAction>
+                  <IconButton onClick={() => handleEdit(preset)} aria-label="edit">
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton onClick={() => handleDelete(preset._id)} edge="end" aria-label="delete">
+                    <DeleteIcon />
+                  </IconButton>
+                </ListItemSecondaryAction>
+              </ListItem>
+            );
+          })}
         </List>
       </Paper>
 
@@ -569,9 +606,9 @@ function PresetManager({ presets, categories, onRefresh }) {
           <FormControl fullWidth margin="dense">
             <InputLabel>Category</InputLabel>
             <Select
-              value={formData.category}
+              value={formData.category as string}
               label="Category"
-              onChange={e => setFormData({...formData, category: e.target.value})}
+              onChange={handleCategoryChange}
             >
               {categories.map(cat => (
                 <MenuItem key={cat._id} value={cat._id}>{cat.name}</MenuItem>

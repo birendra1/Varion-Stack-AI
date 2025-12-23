@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, FormEvent } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import {
   Container, Paper, TextField, Button, Typography, Box, Alert,
@@ -15,10 +15,10 @@ export function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
@@ -27,7 +27,7 @@ export function LoginPage() {
       const data = await apiLogin(username, password);
       login(data);
       navigate('/');
-    } catch (err) {
+    } catch (err: any) {
       setError(err.message || 'Login failed');
     } finally {
       setIsLoading(false);

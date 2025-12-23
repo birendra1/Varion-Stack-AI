@@ -7,24 +7,31 @@ import {
   deleteSession,
   fetchCategories,
   fetchPresets,
-  fetchModels, // Import this
+  fetchModels,
 } from '../api/chatService';
+import { 
+  IMessage, 
+  ISessionListItem, 
+  IModelConfig, 
+  ICategory, 
+  IPreset 
+} from '../types';
 
-export function useChat(initialModel = '', customSystemPrompt = null) {
-  const [messages, setMessages] = useState([]);
-  const [sessions, setSessions] = useState([]);
-  const [availableModels, setAvailableModels] = useState([]);
-  const [currentModel, setCurrentModel] = useState(initialModel);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [sessionId, setSessionId] = useState(null);
+export function useChat(initialModel: string = '', customSystemPrompt: string | null = null) {
+  const [messages, setMessages] = useState<IMessage[]>([]);
+  const [sessions, setSessions] = useState<ISessionListItem[]>([]);
+  const [availableModels, setAvailableModels] = useState<IModelConfig[]>([]);
+  const [currentModel, setCurrentModel] = useState<string>(initialModel);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   // Presets state
-  const [categories, setCategories] = useState([]);
-  const [presets, setPresets] = useState([]);
-  const [activePreset, setActivePreset] = useState(null);
+  const [categories, setCategories] = useState<ICategory[]>([]);
+  const [presets, setPresets] = useState<IPreset[]>([]);
+  const [activePreset, setActivePreset] = useState<IPreset | null>(null);
 
-  const startNewSession = useCallback((preset = null) => {
+  const startNewSession = useCallback((preset: IPreset | null = null) => {
     setSessionId(null);
     setMessages([]);
     setActivePreset(preset);
@@ -67,7 +74,7 @@ export function useChat(initialModel = '', customSystemPrompt = null) {
       }
     };
     init();
-  }, []); // Run only once on mount
+  }, [loadSessions]); // Added loadSessions to dependencies
 
   useEffect(() => {
     async function loadHistory() {
@@ -89,17 +96,13 @@ export function useChat(initialModel = '', customSystemPrompt = null) {
 
   // --- ACTIONS ---
 
-  const sendMessage = useCallback(async (content, files = []) => {
+  const sendMessage = useCallback(async (content: string, files: File[] = []) => {
     if (!content.trim() && files.length === 0) return;
 
-    // Create user message object. 
-    // Note: We don't display the full file content in the UI immediately, 
-    // but we could show "Attached: filename" if we wanted.
-    const userMessage = { 
+    const userMessage: IMessage = { 
         role: 'user', 
         content, 
         timestamp: new Date().toISOString(),
-        // Add minimal file info for optimistic UI if needed
         attachments: files.map(f => ({ filename: f.name, mimetype: f.type })) 
     };
     
@@ -108,10 +111,10 @@ export function useChat(initialModel = '', customSystemPrompt = null) {
     // If it's the first message, inject system prompt (preset takes priority over custom)
     if (messages.length === 0) {
       if (activePreset) {
-        const systemMessage = { role: 'system', content: activePreset.prompt };
+        const systemMessage: IMessage = { role: 'system', content: activePreset.prompt };
         messagesToSend.unshift(systemMessage);
       } else if (customSystemPrompt) {
-        const systemMessage = { role: 'system', content: customSystemPrompt };
+        const systemMessage: IMessage = { role: 'system', content: customSystemPrompt };
         messagesToSend.unshift(systemMessage);
       }
     }
@@ -120,7 +123,7 @@ export function useChat(initialModel = '', customSystemPrompt = null) {
     setIsLoading(true);
     setError(null);
 
-    const assistantPlaceholder = { role: 'assistant', content: '', timestamp: new Date().toISOString() };
+    const assistantPlaceholder: IMessage = { role: 'assistant', content: '', timestamp: new Date().toISOString() };
     setMessages(prev => [...prev, assistantPlaceholder]);
     
     try {
@@ -150,14 +153,14 @@ export function useChat(initialModel = '', customSystemPrompt = null) {
           }
         }
       });
-    } catch (err) {
+    } catch (err: any) {
       setError(err.message);
       setIsLoading(false);
       setMessages(prev => prev.slice(0, -1)); // Remove placeholder on error
     }
   }, [messages, activePreset, customSystemPrompt, currentModel, sessionId, sessions, loadSessions]);
 
-  const updateTitle = useCallback(async (sessionIdToUpdate, newTitle) => {
+  const updateTitle = useCallback(async (sessionIdToUpdate: string, newTitle: string) => {
     try {
       await updateSessionTitle(sessionIdToUpdate, newTitle);
       await loadSessions();
@@ -166,7 +169,7 @@ export function useChat(initialModel = '', customSystemPrompt = null) {
     }
   }, [loadSessions]);
 
-  const deleteChatSession = useCallback(async (sessionIdToDelete) => {
+  const deleteChatSession = useCallback(async (sessionIdToDelete: string) => {
     try {
       await deleteSession(sessionIdToDelete);
       
@@ -176,7 +179,7 @@ export function useChat(initialModel = '', customSystemPrompt = null) {
         setSessionId(null);
         setMessages([]);
         setActivePreset(null);
-        // Optionally load the most recent session or start new
+        
         const remainingSessions = sessions.filter(s => s.sessionId !== sessionIdToDelete);
         if (remainingSessions.length > 0) {
             setSessionId(remainingSessions[0].sessionId);
@@ -202,10 +205,9 @@ export function useChat(initialModel = '', customSystemPrompt = null) {
     setCurrentModel,
     updateTitle,
     deleteChatSession,
-    // Preset related state and functions
     categories,
     presets,
     activePreset,
-    availableModels, // Export this
+    availableModels,
   };
 }

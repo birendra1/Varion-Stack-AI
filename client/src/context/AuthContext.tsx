@@ -1,18 +1,27 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { getAuthToken, setAuthToken } from '../api/chatService';
+import { IUser, IAuthContext } from '../types';
 
-const AuthContext = createContext(null);
+interface DecodedToken {
+  id: string;
+  username: string;
+  email: string;
+  role: 'admin' | 'user';
+  exp: number;
+}
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+const AuthContext = createContext<IAuthContext | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<IUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const token = getAuthToken();
     if (token) {
       try {
-        const decoded = jwtDecode(token);
+        const decoded = jwtDecode<DecodedToken>(token);
         // Check if token is expired
         if (decoded.exp * 1000 > Date.now()) {
           setUser({
@@ -33,9 +42,9 @@ export function AuthProvider({ children }) {
     setIsLoading(false);
   }, []);
 
-  const login = (data) => {
+  const login = (data: { token: string }) => {
     setAuthToken(data.token);
-    const decoded = jwtDecode(data.token);
+    const decoded = jwtDecode<DecodedToken>(data.token);
     setUser({
       id: decoded.id,
       username: decoded.username,
@@ -49,7 +58,7 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  const value = {
+  const value: IAuthContext = {
     user,
     isLoading,
     login,

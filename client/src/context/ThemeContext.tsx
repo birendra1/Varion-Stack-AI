@@ -1,20 +1,21 @@
-import { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import { createTheme, ThemeProvider as MuiThemeProvider } from '@mui/material';
 import { fetchUserPreferences, updateUserPreferences } from '../api/chatService';
 import { useAuth } from './AuthContext';
+import { IThemeContext, IUserPreferences } from '../types';
 
-const ThemeContext = createContext(null);
+const ThemeContext = createContext<IThemeContext | undefined>(undefined);
 
-const defaultPreferences = {
+const defaultPreferences: IUserPreferences = {
   theme: 'system',
   accentColor: '#1976d2',
   defaultModel: null,
   customSystemPrompt: null
 };
 
-export function ThemeProvider({ children }) {
+export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const { isAuthenticated } = useAuth();
-  const [preferences, setPreferences] = useState(defaultPreferences);
+  const [preferences, setPreferences] = useState<IUserPreferences>(defaultPreferences);
   const [isLoadingPrefs, setIsLoadingPrefs] = useState(false);
 
   // Load preferences when authenticated
@@ -23,7 +24,12 @@ export function ThemeProvider({ children }) {
       setIsLoadingPrefs(true);
       fetchUserPreferences()
         .then(prefs => {
-          setPreferences(prev => ({ ...prev, ...prefs }));
+          setPreferences(prev => ({ 
+            ...prev, 
+            ...prefs,
+            defaultModel: prefs.defaultModel === undefined ? null : prefs.defaultModel, // Ensure null if undefined
+            customSystemPrompt: prefs.customSystemPrompt === undefined ? null : prefs.customSystemPrompt // Ensure null if undefined
+          }));
         })
         .catch(console.error)
         .finally(() => setIsLoadingPrefs(false));
@@ -33,9 +39,15 @@ export function ThemeProvider({ children }) {
     }
   }, [isAuthenticated]);
 
-  const updatePreferences = async (updates) => {
+  const updatePreferences = async (updates: Partial<IUserPreferences>) => {
     // Optimistic update
-    const newPrefs = { ...preferences, ...updates };
+    const oldPrefs = preferences;
+    const newPrefs = { 
+      ...preferences, 
+      ...updates,
+      defaultModel: updates.defaultModel === undefined ? preferences.defaultModel : updates.defaultModel,
+      customSystemPrompt: updates.customSystemPrompt === undefined ? preferences.customSystemPrompt : updates.customSystemPrompt
+    };
     setPreferences(newPrefs);
 
     if (isAuthenticated) {
@@ -45,17 +57,17 @@ export function ThemeProvider({ children }) {
       } catch (err) {
         console.error('Failed to save preferences:', err);
         // Revert on error
-        setPreferences(preferences);
+        setPreferences(oldPrefs);
       }
     }
   };
 
   // Determine effective theme mode
-  const effectiveMode = useMemo(() => {
+  const effectiveMode = useMemo<'light' | 'dark'>(() => {
     if (preferences.theme === 'system') {
       return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     }
-    return preferences.theme;
+    return preferences.theme as 'light' | 'dark';
   }, [preferences.theme]);
 
   // Create MUI theme
@@ -91,7 +103,7 @@ export function ThemeProvider({ children }) {
     });
   }, [effectiveMode, preferences.accentColor]);
 
-  const value = {
+  const value: IThemeContext = {
     preferences,
     updatePreferences,
     isLoadingPrefs,
@@ -105,7 +117,7 @@ export function ThemeProvider({ children }) {
       </MuiThemeProvider>
     </ThemeContext.Provider>
   );
-}
+};
 
 export const useTheme = () => {
   const context = useContext(ThemeContext);

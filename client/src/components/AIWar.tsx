@@ -6,15 +6,16 @@ import { ModelSelector } from './ModelSelector';
 import { ChatInput } from './ChatInput';
 import { Message } from './Message';
 import { fetchModels, sendChatMessage } from '../api/chatService';
+import { IMessage, IModelConfig } from '../types';
 
 export function AIWar() {
   const navigate = useNavigate();
-  const [models, setModels] = useState([]);
+  const [models, setModels] = useState<IModelConfig[]>([]);
   const [modelA, setModelA] = useState('');
   const [modelB, setModelB] = useState('');
   
-  const [messagesA, setMessagesA] = useState([]);
-  const [messagesB, setMessagesB] = useState([]);
+  const [messagesA, setMessagesA] = useState<IMessage[]>([]);
+  const [messagesB, setMessagesB] = useState<IMessage[]>([]);
   
   const [loadingA, setLoadingA] = useState(false);
   const [loadingB, setLoadingB] = useState(false);
@@ -35,10 +36,10 @@ export function AIWar() {
     load();
   }, []);
 
-  const handleSend = async (content, files = []) => {
+  const handleSend = async (content: string, files: File[] = []) => {
     if (!content.trim() && files.length === 0) return;
 
-    const userMsg = { role: 'user', content, attachments: files.map(f => ({ filename: f.name })), timestamp: new Date().toISOString() };
+    const userMsg: IMessage = { role: 'user', content, attachments: files.map(f => ({ filename: f.name, mimetype: f.type })), timestamp: new Date().toISOString() };
     
     // Add user message to both panels
     setMessagesA(prev => [...prev, userMsg]);
@@ -48,7 +49,7 @@ export function AIWar() {
     setLoadingB(true);
 
     // Trigger Model A
-    const placeholderA = { role: 'assistant', content: '', timestamp: new Date().toISOString() };
+    const placeholderA: IMessage = { role: 'assistant', content: '', timestamp: new Date().toISOString() };
     setMessagesA(prev => [...prev, placeholderA]);
     
     sendChatMessage(modelA, [...messagesA, userMsg], null, files, (chunk) => {
@@ -64,7 +65,7 @@ export function AIWar() {
     }).catch(() => setLoadingA(false));
 
     // Trigger Model B
-    const placeholderB = { role: 'assistant', content: '', timestamp: new Date().toISOString() };
+    const placeholderB: IMessage = { role: 'assistant', content: '', timestamp: new Date().toISOString() };
     setMessagesB(prev => [...prev, placeholderB]);
 
     sendChatMessage(modelB, [...messagesB, userMsg], null, files, (chunk) => {
@@ -96,10 +97,10 @@ export function AIWar() {
       <Box sx={{ flexGrow: 1, overflow: 'hidden', p: 2 }}>
         <Grid container spacing={2} sx={{ height: '100%' }}>
           {/* Model A Panel */}
-          <Grid item xs={12} md={6} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <Grid size={{ xs: 12, md: 6 }} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             <Paper elevation={3} sx={{ p: 2, mb: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Typography variant="subtitle1" fontWeight="bold">Contender A</Typography>
-                <ModelSelector currentModel={modelA} onModelChange={setModelA} models={models} />
+                <ModelSelector currentModel={modelA} onModelChange={setModelA} models={models} disabled={loadingA} />
             </Paper>
             <Paper elevation={3} sx={{ flexGrow: 1, overflowY: 'auto', p: 2, bgcolor: '#ffffff' }}>
                 {messagesA.length === 0 && <Typography color="text.secondary" align="center" sx={{ mt: 4 }}>Select a model and start chatting to see responses.</Typography>}
@@ -111,10 +112,10 @@ export function AIWar() {
           </Grid>
 
           {/* Model B Panel */}
-          <Grid item xs={12} md={6} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <Grid size={{ xs: 12, md: 6 }} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             <Paper elevation={3} sx={{ p: 2, mb: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Typography variant="subtitle1" fontWeight="bold">Contender B</Typography>
-                <ModelSelector currentModel={modelB} onModelChange={setModelB} models={models} />
+                <ModelSelector currentModel={modelB} onModelChange={setModelB} models={models} disabled={loadingB} />
             </Paper>
             <Paper elevation={3} sx={{ flexGrow: 1, overflowY: 'auto', p: 2, bgcolor: '#ffffff' }}>
                 {messagesB.length === 0 && <Typography color="text.secondary" align="center" sx={{ mt: 4 }}>Select a model and start chatting to see responses.</Typography>}

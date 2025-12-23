@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, ChangeEvent, FormEvent, KeyboardEvent } from 'react';
 import { Box, TextField, IconButton, Badge, Tooltip } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
@@ -6,22 +6,35 @@ import MicIcon from '@mui/icons-material/Mic';
 import MicOffIcon from '@mui/icons-material/MicOff';
 import CloseIcon from '@mui/icons-material/Close';
 
-export function ChatInput({ onSend, disabled }) {
+declare global {
+  interface Window {
+    SpeechRecognition: any;
+    webkitSpeechRecognition: any;
+  }
+}
+
+interface ChatInputProps {
+  onSend: (content: string, files: File[]) => void;
+  disabled: boolean;
+}
+
+export function ChatInput({ onSend, disabled }: ChatInputProps) {
   const [value, setValue] = useState('');
-  const [files, setFiles] = useState([]);
+  const [files, setFiles] = useState<File[]>([]);
   const [isListening, setIsListening] = useState(false);
-  const fileInputRef = useRef(null);
-  const recognitionRef = useRef(null);
+  const [isSpeechRecognitionSupported, setIsSpeechRecognitionSupported] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
-    // Initialize Speech Recognition if available
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
+        setIsSpeechRecognitionSupported(true);
         const recognition = new SpeechRecognition();
         recognition.continuous = true;
         recognition.interimResults = true;
         
-        recognition.onresult = (event) => {
+        recognition.onresult = (event: any) => {
             let finalTranscript = '';
             for (let i = event.resultIndex; i < event.results.length; ++i) {
                 if (event.results[i].isFinal) {
@@ -38,10 +51,12 @@ export function ChatInput({ onSend, disabled }) {
         };
 
         recognitionRef.current = recognition;
+    } else {
+        setIsSpeechRecognitionSupported(false);
     }
   }, []);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (value.trim() || files.length > 0) {
       onSend(value, files);
@@ -50,29 +65,27 @@ export function ChatInput({ onSend, disabled }) {
     }
   };
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);
     }
   };
 
-  const handleFileChange = (e) => {
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
         const newFiles = Array.from(e.target.files);
-        // Basic check for duplicates or limits could go here
         setFiles(prev => [...prev, ...newFiles].slice(0, 10)); 
     }
   };
 
-  const removeFile = (index) => {
+  const removeFile = (index: number) => {
       setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const toggleVoice = () => {
       if (!recognitionRef.current) {
-          alert("Speech recognition not supported in this browser.");
-          return;
+          return; // Should be disabled if not supported
       }
 
       if (isListening) {
@@ -125,13 +138,18 @@ export function ChatInput({ onSend, disabled }) {
             onChange={handleFileChange} 
         />
         <Tooltip title="Attach Files (Images, Docs, PDF)">
-            <IconButton onClick={() => fileInputRef.current.click()} disabled={disabled} sx={{ mr: 1, mb: 0.5 }}>
+            <IconButton onClick={() => fileInputRef.current?.click()} disabled={disabled} sx={{ mr: 1, mb: 0.5 }}>
                 <AttachFileIcon />
             </IconButton>
         </Tooltip>
 
-        <Tooltip title={isListening ? "Stop Listening" : "Start Voice Input"}>
-            <IconButton onClick={toggleVoice} color={isListening ? "secondary" : "default"} disabled={disabled} sx={{ mr: 1, mb: 0.5 }}>
+        <Tooltip title={isSpeechRecognitionSupported ? (isListening ? "Stop Listening" : "Start Voice Input") : "Speech recognition not supported"}>
+            <IconButton 
+                onClick={toggleVoice} 
+                color={isListening ? "secondary" : "default"} 
+                disabled={disabled || !isSpeechRecognitionSupported} 
+                sx={{ mr: 1, mb: 0.5 }}
+            >
                 {isListening ? <MicOffIcon /> : <MicIcon />}
             </IconButton>
         </Tooltip>

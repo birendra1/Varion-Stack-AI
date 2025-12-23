@@ -3,9 +3,16 @@ import { Message } from './Message';
 import { LoadingIndicator } from './LoadingIndicator';
 import { Box, Typography, Chip, Avatar } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
+import { IMessage, IPreset } from '../types';
 
-export function MessageList({ messages, isLoading, activePreset }) {
-  const messagesEndRef = useRef(null);
+interface MessageListProps {
+  messages: IMessage[];
+  isLoading: boolean;
+  activePreset: IPreset | null;
+}
+
+export function MessageList({ messages, isLoading, activePreset }: MessageListProps) {
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

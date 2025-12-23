@@ -1,3 +1,4 @@
+
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { CssBaseline } from '@mui/material';
 import { AuthProvider } from './context/AuthContext';
@@ -9,7 +10,7 @@ import { AIWar } from './components/AIWar';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 
-function App() {
+const App: React.FC = () => {
   return (
     <AuthProvider>
       <ThemeProvider>
@@ -51,6 +52,6 @@ function App() {
       </ThemeProvider>
     </AuthProvider>
   );
-}
+};
 
 export default App;

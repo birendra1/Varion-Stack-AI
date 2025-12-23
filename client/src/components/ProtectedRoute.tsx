@@ -1,8 +1,14 @@
+import { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Box, CircularProgress } from '@mui/material';
 
-export function ProtectedRoute({ children, requireAdmin = false }) {
+interface ProtectedRouteProps {
+  children: ReactNode;
+  requireAdmin?: boolean;
+}
+
+export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading, isAdmin } = useAuth();
   const location = useLocation();
 
@@ -33,5 +39,5 @@ export function ProtectedRoute({ children, requireAdmin = false }) {
     return <Navigate to="/" replace />;
   }
 
-  return children;
+  return <>{children}</>;
 }

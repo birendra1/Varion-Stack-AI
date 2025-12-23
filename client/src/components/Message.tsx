@@ -1,11 +1,17 @@
+
 import { Paper, Typography, Box, Avatar, Chip } from '@mui/material';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
+import { IMessage } from '../types';
 
-export function Message({ message }) {
+interface MessageProps {
+  message: IMessage;
+}
+
+export function Message({ message }: MessageProps) {
   const isUser = message.role === 'user';
   const attachments = message.attachments || [];
 
@@ -26,14 +32,14 @@ export function Message({ message }) {
             <Paper
             variant="outlined"
             sx={{
-                p: 2, // Reduced from 2.5 to 2
+                p: 2,
                 bgcolor: isUser ? '#E3F2FD' : '#F3F3F3',
                 border: 'none',
                 borderRadius: '16px', 
                 wordWrap: 'break-word',
-                '& p': { m: 0, mb: 0.5 }, // Reduced margin
+                '& p': { m: 0, mb: 0.5 },
                 '& p:last-child': { mb: 0 },
-                '& pre': { m: '6px 0', p: 0, borderRadius: '8px', overflowX: 'auto' }, // Reduced margin
+                '& pre': { m: '6px 0', p: 0, borderRadius: '8px', overflowX: 'auto' },
                 '& code': { fontFamily: 'monospace' }
             }}
             >
@@ -43,25 +49,27 @@ export function Message({ message }) {
                 <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
-                    p({node, children, ...props}) {
+                    p({ children, ...props }) {
                         return <Typography variant="body1" sx={{fontSize: '0.95rem'}} {...props}>{children}</Typography>
                     },
-                    code({inline, className, children, ...props}) {
-                    const match = /language-(\w+)/.exec(className || '')
-                    return !inline && match ? (
-                        <SyntaxHighlighter
-                        style={oneDark}
-                        language={match[1]}
-                        PreTag="div"
-                        {...props}
-                        >
-                        {String(children).replace(/\n$/, '')}
-                        </SyntaxHighlighter>
-                    ) : (
-                        <code className={className} {...props} style={{backgroundColor: inline ? 'rgba(0,0,0,0.1)' : 'transparent', padding: inline ? '2px 4px' : 0, borderRadius: '4px'}}>
-                        {children}
-                        </code>
-                    )
+                    code({ className, children, ...props }) {
+                      const match = /language-(\w+)/.exec(className || '')
+                      const isInline = !match;
+                      const { ref, ...rest } = props as any;
+                      return !isInline ? (
+                          <SyntaxHighlighter
+                          style={oneDark as any}
+                          language={match[1]}
+                          PreTag="div"
+                          {...rest}
+                          >
+                          {String(children).replace(/\n$/, '')}
+                          </SyntaxHighlighter>
+                      ) : (
+                          <code className={className} {...rest} style={{backgroundColor: 'rgba(0,0,0,0.1)', padding: '2px 4px', borderRadius: '4px'}}>
+                          {children}
+                          </code>
+                      )
                     }
                 }}
                 >
@@ -85,9 +93,11 @@ export function Message({ message }) {
                 </Box>
             )}
             
-            <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: 'text.secondary' }}>
-                {new Date(message.timestamp).toLocaleTimeString()}
-            </Typography>
+            {message.timestamp && (
+              <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: 'text.secondary' }}>
+                  {new Date(message.timestamp).toLocaleTimeString()}
+              </Typography>
+            )}
         </Box>
       </Box>
     </Box>

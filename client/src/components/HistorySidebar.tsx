@@ -1,12 +1,22 @@
-import { useState } from 'react';
+import { useState, MouseEvent } from 'react';
 import { List, ListItem, ListItemButton, ListItemText, Typography, Button, Divider, Box, IconButton, TextField } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
 import DeleteIcon from '@mui/icons-material/Delete';
+import { ISessionListItem } from '../types';
 
-export function HistorySidebar({ sessions, activeSessionId, onSessionClick, onNewChat, onUpdateTitle, onDeleteSession }) {
-  const [editingSessionId, setEditingSessionId] = useState(null);
+interface HistorySidebarProps {
+  sessions: ISessionListItem[];
+  activeSessionId: string | null;
+  onSessionClick: (sessionId: string) => void;
+  onNewChat: () => void;
+  onUpdateTitle: (sessionId: string, title: string) => Promise<void>;
+  onDeleteSession: (sessionId: string) => Promise<void>;
+}
+
+export function HistorySidebar({ sessions, activeSessionId, onSessionClick, onNewChat, onUpdateTitle, onDeleteSession }: HistorySidebarProps) {
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
 
   const handleNewChat = () => {
@@ -15,13 +25,13 @@ export function HistorySidebar({ sessions, activeSessionId, onSessionClick, onNe
     }
   };
 
-  const handleEditClick = (e, session) => {
+  const handleEditClick = (e: MouseEvent, session: ISessionListItem) => {
     e.stopPropagation();
     setEditingSessionId(session.sessionId);
     setEditingTitle(session.title);
   };
 
-  const handleDeleteClick = async (e, sessionId) => {
+  const handleDeleteClick = async (e: MouseEvent, sessionId: string) => {
     e.stopPropagation();
     if (window.confirm("Are you sure you want to delete this chat?")) {
       await onDeleteSession(sessionId);

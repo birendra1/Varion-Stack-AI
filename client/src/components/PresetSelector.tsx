@@ -1,9 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, SyntheticEvent } from 'react';
 import { Dialog, DialogTitle, DialogContent, Tabs, Tab, Box, Card, CardContent, Typography, Button, Grid, Chip, IconButton } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
+import { ICategory, IPreset } from '../types';
 
-export function PresetSelector({ open, onClose, categories, presets, onSelectPreset }) {
-  const [selectedCategoryId, setSelectedCategoryId] = useState(null);
+interface PresetSelectorProps {
+  open: boolean;
+  onClose: () => void;
+  categories: ICategory[];
+  presets: IPreset[];
+  onSelectPreset: (preset: IPreset | null) => void;
+}
+
+export function PresetSelector({ open, onClose, categories, presets, onSelectPreset }: PresetSelectorProps) {
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 
   useEffect(() => {
     // Set the initial tab selection when categories are loaded
@@ -13,16 +22,21 @@ export function PresetSelector({ open, onClose, categories, presets, onSelectPre
   }, [categories, selectedCategoryId]);
 
 
-  const handleTabChange = (event, newValue) => {
+  const handleTabChange = (_event: SyntheticEvent, newValue: string) => {
     setSelectedCategoryId(newValue);
   };
 
-  const handleSelect = (preset) => {
+  const handleSelect = (preset: IPreset | null) => {
     onSelectPreset(preset);
     onClose();
   };
 
-  const filteredPresets = presets.filter(p => p.category?._id === selectedCategoryId);
+  const filteredPresets = presets.filter(p => {
+    if (typeof p.category === 'object' && p.category !== null) {
+      return p.category._id === selectedCategoryId;
+    }
+    return p.category === selectedCategoryId;
+  });
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
@@ -43,8 +57,8 @@ export function PresetSelector({ open, onClose, categories, presets, onSelectPre
         <Box sx={{ minHeight: '350px' }}>
           <Grid container spacing={1.5}>
             {/* General Chat Option */}
-            <Grid item xs={12} sm={6} md={4}>
-              <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', borderRadius: 2, border: '1px dashed', borderColor: 'primary.main' }}>
+          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+              <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', borderRadius: 2 }}>
                 <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
                   <Typography gutterBottom variant="subtitle1" component="h2" sx={{ lineHeight: 1.1, fontWeight: 500, fontSize: '1rem' }}>
                     General Chat
@@ -68,8 +82,8 @@ export function PresetSelector({ open, onClose, categories, presets, onSelectPre
             </Grid>
 
             {filteredPresets.map(preset => (
-              <Grid item xs={12} sm={6} md={4} key={preset._id}>
-                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', borderRadius: 2 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 4 }} key={preset._id}>
+              <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', borderRadius: 2 }}>
                   <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
                         <Typography gutterBottom variant="subtitle1" component="h2" sx={{ lineHeight: 1.1, fontWeight: 500, fontSize: '1rem' }}>

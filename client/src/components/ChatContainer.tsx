@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useChat } from '../hooks/useChat';
 import { useAuth } from '../context/AuthContext';
@@ -17,6 +17,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import { IPreset } from '../types';
 
 const drawerWidth = 280;
 
@@ -41,13 +42,13 @@ export function ChatContainer() {
     presets,
     activePreset,
     availableModels,
-  } = useChat(preferences.defaultModel, preferences.customSystemPrompt);
+  } = useChat(preferences.defaultModel || '', preferences.customSystemPrompt);
 
   const [presetSelectorOpen, setPresetSelectorOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [userMenuAnchor, setUserMenuAnchor] = useState(null);
+  const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
 
-  const handleSelectPreset = (preset) => {
+  const handleSelectPreset = (preset: IPreset | null) => {
     startNewSession(preset);
   };
 
@@ -60,6 +61,10 @@ export function ChatContainer() {
   const handleOpenAdmin = () => {
     setUserMenuAnchor(null);
     navigate('/admin');
+  };
+
+  const handleUserMenuOpen = (event: MouseEvent<HTMLElement>) => {
+    setUserMenuAnchor(event.currentTarget);
   };
 
   return (
@@ -121,7 +126,7 @@ export function ChatContainer() {
                 <Chip
                   avatar={<Avatar sx={{ bgcolor: 'secondary.main' }}>{user.username[0].toUpperCase()}</Avatar>}
                   label={user.username}
-                  onClick={(e) => setUserMenuAnchor(e.currentTarget)}
+                  onClick={handleUserMenuOpen}
                   sx={{ cursor: 'pointer', color: 'inherit' }}
                   variant="outlined"
                 />
