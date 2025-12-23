@@ -1,14 +1,23 @@
 const API_BASE = '/api';
 
 // This function now handles a streaming response
-export async function sendChatMessage(model, messages, sessionId, onData) {
+export async function sendChatMessage(model, messages, sessionId, files = [], onData) {
   try {
+    const formData = new FormData();
+    formData.append('model', model);
+    formData.append('messages', JSON.stringify(messages));
+    if (sessionId) {
+      formData.append('sessionId', sessionId);
+    }
+    
+    files.forEach(file => {
+      formData.append('files', file);
+    });
+
     const response = await fetch(`${API_BASE}/chat`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ model, messages, sessionId }),
+      // No Content-Type header; browser sets it with boundary for FormData
+      body: formData,
     });
 
     if (!response.body) {
@@ -102,6 +111,19 @@ export async function updateSessionTitle(sessionId, title) {
   }
 }
 
+// Add a function to delete a session
+export async function deleteSession(sessionId) {
+  try {
+    const response = await fetch(`${API_BASE}/sessions/${sessionId}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) throw new Error("Failed to delete session");
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+}
+
 export async function fetchCategories() {
   try {
     const response = await fetch(`${API_BASE}/categories`);
@@ -125,11 +147,7 @@ export async function fetchPresets(categoryId = null) {
   }
 }
 
-export const AVAILABLE_MODELS = [
-  "llama3.2:3b",
-  "qwen3:0.6b",
-  "ministral-3:3b",
-];
+// REMOVED AVAILABLE_MODELS export - use fetchModels() instead
 
 // --- AUTH ---
 
@@ -216,4 +234,125 @@ export async function deleteCategory(id) {
     headers: authHeaders()
   });
   if (!response.ok) throw new Error("Failed to delete category");
+}
+
+// --- ADMIN DASHBOARD ---
+
+export async function fetchAdminStats() {
+  const response = await fetch(`${API_BASE}/admin/stats`, { headers: authHeaders() });
+  if (!response.ok) throw new Error("Failed to load stats");
+  return response.json();
+}
+
+export async function fetchUsers() {
+  const response = await fetch(`${API_BASE}/admin/users`, { headers: authHeaders() });
+  if (!response.ok) throw new Error("Failed to load users");
+  return response.json();
+}
+
+export async function toggleUserBlock(userId, isBlocked) {
+  const response = await fetch(`${API_BASE}/admin/users/${userId}/block`, {
+    method: 'PUT',
+    headers: authHeaders(),
+    body: JSON.stringify({ isBlocked })
+  });
+  if (!response.ok) throw new Error("Failed to update user status");
+  return response.json();
+}
+
+export async function sendUserEmail(userId, message) {
+  const response = await fetch(`${API_BASE}/admin/users/${userId}/email`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ message })
+  });
+  if (!response.ok) throw new Error("Failed to send email");
+  return response.json();
+}
+
+export async function generateSupportToken(userId) {
+  const response = await fetch(`${API_BASE}/admin/users/${userId}/token`, {
+    method: 'POST',
+    headers: authHeaders()
+  });
+  if (!response.ok) throw new Error("Failed to generate token");
+  return response.json();
+}
+
+// --- MODEL CONFIG ---
+
+export async function fetchModels() {
+  const response = await fetch(`${API_BASE}/models`); // Public
+  if (!response.ok) throw new Error("Failed to load models");
+  return response.json();
+}
+
+export async function fetchAdminModels() {
+  const response = await fetch(`${API_BASE}/admin/models`, { headers: authHeaders() });
+  if (!response.ok) throw new Error("Failed to load models");
+  return response.json();
+}
+
+export async function createModel(data) {
+  const response = await fetch(`${API_BASE}/admin/models`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify(data)
+  });
+  if (!response.ok) throw new Error("Failed to create model");
+  return response.json();
+}
+
+export async function updateModel(id, data) {
+  const response = await fetch(`${API_BASE}/admin/models/${id}`, {
+    method: 'PUT',
+    headers: authHeaders(),
+    body: JSON.stringify(data)
+  });
+  if (!response.ok) throw new Error("Failed to update model");
+  return response.json();
+}
+
+export async function deleteModel(id) {
+  const response = await fetch(`${API_BASE}/admin/models/${id}`, {
+    method: 'DELETE',
+    headers: authHeaders()
+  });
+  if (!response.ok) throw new Error("Failed to delete model");
+}
+
+// --- MCP SERVERS ---
+
+export async function fetchMCPServers() {
+  const response = await fetch(`${API_BASE}/admin/mcp`, { headers: authHeaders() });
+  if (!response.ok) throw new Error("Failed to load MCP servers");
+  return response.json();
+}
+
+export async function createMCPServer(data) {
+  const response = await fetch(`${API_BASE}/admin/mcp`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify(data)
+  });
+  if (!response.ok) throw new Error("Failed to create server");
+  return response.json();
+}
+
+export async function updateMCPServer(id, data) {
+  const response = await fetch(`${API_BASE}/admin/mcp/${id}`, {
+    method: 'PUT',
+    headers: authHeaders(),
+    body: JSON.stringify(data)
+  });
+  if (!response.ok) throw new Error("Failed to update server");
+  return response.json();
+}
+
+export async function deleteMCPServer(id) {
+  const response = await fetch(`${API_BASE}/admin/mcp/${id}`, {
+    method: 'DELETE',
+    headers: authHeaders()
+  });
+  if (!response.ok) throw new Error("Failed to delete server");
 }

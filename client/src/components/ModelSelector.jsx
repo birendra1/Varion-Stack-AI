@@ -1,11 +1,10 @@
-import { AVAILABLE_MODELS } from '../api/chatService';
 import { FormControl, InputLabel, Select, MenuItem, Box } from '@mui/material';
 
-export function ModelSelector({ currentModel, onModelChange, disabled }) {
+export function ModelSelector({ currentModel, onModelChange, disabled, models = [] }) {
   return (
-    <Box sx={{ minWidth: 200 }}>
-      <FormControl fullWidth size="small">
-        <InputLabel id="model-select-label">Model</InputLabel>
+    <Box sx={{ minWidth: 150 }}>
+      <FormControl fullWidth size="small" variant="standard">
+        <InputLabel id="model-select-label" sx={{ fontSize: '0.9rem' }}>Model</InputLabel>
         <Select
           labelId="model-select-label"
           id="model-select"
@@ -13,11 +12,11 @@ export function ModelSelector({ currentModel, onModelChange, disabled }) {
           label="Model"
           onChange={(e) => onModelChange(e.target.value)}
           disabled={disabled}
-          sx={{ backgroundColor: 'white', color: 'black' }}
+          sx={{ backgroundColor: 'transparent', color: 'inherit', fontSize: '0.9rem', py: 0.5 }}
         >
-          {AVAILABLE_MODELS.map((model) => (
-            <MenuItem key={model} value={model}>
-              {model}
+          {models.map((model) => (
+            <MenuItem key={model.value} value={model.value} sx={{ fontSize: '0.9rem', py: 0.5 }}>
+              {model.name}
             </MenuItem>
           ))}
         </Select>
